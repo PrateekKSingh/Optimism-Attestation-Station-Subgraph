@@ -1,0 +1,64 @@
+import { Bytes } from '@graphprotocol/graph-ts'
+import { Address } from '@graphprotocol/graph-ts'
+import { store } from '@graphprotocol/graph-ts'
+
+// Import the AttestationCreated event class generated from the Optimism AttestationStation ABI
+import { AttestationCreated as AttestationCreatedEvent } from '../generated/Optimism/AttestationStation'
+
+// Import the AboutAddress entity type generated from the GraphQL schema
+import { AboutAddress } from '../generated/schema'
+// Import the AttestationList entity type generated from the GraphQL schema
+import { AttestationList } from '../generated/schema'
+
+// AttestationCreated event handler
+export function handleAttestationCreated(event: AttestationCreated): void {
+  //First check an AboutAddress entity already exists for the corresponding about address of the event. If the AboutAddress entity exists, load it from the store
+  //otherwise create a new entity
+  let id = event.about // event.about is of type address in Optimism and id is of type Bytes in GraphQL. Explicit type conversion is not needed in this case.
+  let flagAboutAddressExists = 1 //This flag will be used to later to load the AttestationList entity from the store only if this flag is set
+  let currAttestationAddingTransactionHash = event.transaction.hash //Hash of current transaction. It will be used later to update AboutAddress entity's hashLastTransactionWhichUpdatedAttestationList attrribute
+  let lastAttestationAddingTransactionHash = currAttestationAddingTransactionHash // This is set to current transaction hash just for initialization. Later on after loading AboutAddress from store the value of last updated transaction hash will be read and updated here 
+  let aboutAddress = AboutAddress.load(id)
+  if (aboutAddress == null) {
+  flagAboutAddressExists = 0
+  aboutAddress = new AboutAddress(id)
+  aboutAddress.hashLastTransactionWhichUpdatedAttestationList = currAttestationAddingTransactionHash
+  }
+  else 
+  {
+	lastAttestationAddingTransactionHash = aboutAddress.hashLastTransactionWhichUpdatedAttestationList
+  }
+
+  //Load the AttestationList entity from the store if About Address already existed in the store.
+  if (flagAboutAddressExists == 1) {
+  //First load the last attestation based on id which is equal to last updating transaction hash for About Address
+  let lastAttestation = AttestationList.load(lastAttestationAddingTransactionHash)
+  let lastAttestationSeqNo = lastAttestation.seqNo
+
+  //Now create a new instance corresponding to the entity attestation list, initialize its attributes with the new values and then save it to the store
+  let currAttestation = new AttestationList(currAttestationAddingTransactionHash) //Note the use of current transaction hash as id when creating new AttestationList instance
+  currAttestation.creatorAddress = event.creator
+  currAttestation.seqNo =  lastAttestationSeqNo + 1
+  currAttestation.key = event.key
+  currAttestation.val = event.val
+  currAttestation.aboutAddress = event.about
+
+  //Save the new entity on store
+  currAttestation.save()
+  }
+  else {
+  //In this case since About Address entity does not exist, the Attestation List entity corresponding to that About Address will also not exist so a Attestation List instance can be directly created, initialized and saved
+  let currAttestation = new AttestationList(currAttestationAddingTransactionHash) //Note the use of current transaction hash as id when creating new AttestationList instance
+  currAttestation.creatorAddress = event.creator
+  currAttestation.seqNo =  1
+  currAttestation.key = event.key
+  currAttestation.val = event.val
+  currAttestation.aboutAddress = event.about
+
+  //Save the new entity on store
+  currAttestation.save()
+  }
+
+  //Set the hash of currnt transaction in the hashLastTransactionWhichUpdatedAttestationList of About Address entity
+  aboutAddress.hashLastTransactionWhichUpdatedAttestationList = currAttestationAddingTransactionHash 
+}

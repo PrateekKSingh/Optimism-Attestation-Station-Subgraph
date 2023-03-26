@@ -1,0 +1,27 @@
+specVersion: 0.0.4
+description: AttestationStationSubgraph for Optimism
+repository: https://github.com/graphprotocol/example-subgraphs
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: optimism/contract
+    name: AttestationStation
+    network: goerli
+    source:
+      address: '0xEE36eaaD94d1Cc1d0eccaDb55C38bFfB6Be06C77'
+      abi: AttestationStation
+    mapping:
+
+      kind: optimism/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - AboutAddress
+        - AttestationList
+      abis:
+        - name: AttestationStation
+          file: ./abis/AttestationStation.json
+      eventHandlers:
+        - event: AttestationCreated(address indexed creator, address indexed about, bytes32 indexed key, bytes val)
+          handler: handleAttestationCreated
+      file: ./src/mapping.ts

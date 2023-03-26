@@ -1,0 +1,19 @@
+type AboutAddress @entity {
+  "As AboutAddress entity is needed to have only one instance in the subgraph, the id will be equal to the About Address itself"
+  id: Bytes!
+  "Hash of last transaction which added the Attestation for this About Address is also an attribute of the entity. This attribute helps quickly load the last Attestation corresponding to this About Address aqnd retrieve sequence number in the Attestation List Entity"
+  "It can also be useful to access any cumulative ranking later which keeps updating on adding each attestation to the Attestation List entity"
+  hashLastTransactionWhichUpdatedAttestationList: Bytes!
+}
+
+type AttestationList @entity {
+  id: Bytes!
+  "Address of the creator of attestation. Structuring the entity this way assumes that one creator address can attest the about address more than once"
+  creatorAddress: Bytes!
+  "This attribute represents the Sequence Number of the attestation for a particular AboutAddress"
+  seqNo: Int!
+  "The corresponding key attribute is Bytes32 in Optimism but within the Graph Entity it can be represented with Bytes"  
+  key: Bytes!
+  val: Bytes!
+  aboutAddress: AboutAddress!
+}
